@@ -1,0 +1,131 @@
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+
+  it-tests-use-input-default-values:
+    name: "IT Test - default inputs values should work fine on this repo"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Given the gh-action is used with default values
+        id: test-data
+        uses: ./
+      - uses: nick-fields/assert-action@v2
+        name: Then outputs.status value must be 0 as the project itself make use of pre-commit validation
+        with:
+          expected: 0
+          actual: ${{ steps.test-data.outputs.status }}
+          comparison: exact
+
+  it-tests-use-input-extra-args:
+    name: "IT Test - custom extra-args should be honored"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Given the gh-action is used with extra-args=--help
+        id: test-data
+        uses: ./
+        with:
+          extra-args: --help
+      - uses: nick-fields/assert-action@v2
+        name: Then outputs.logs should contains some printed documentation
+        with:
+          expected: "usage: pre-commit run"
+          actual: ${{ steps.test-data.outputs.logs }}
+          comparison: contains
+
+  it-tests-output-status-failure:
+    name: "IT Test - output status should be 1 given pre-commit detected some issue"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Given a pre-commit-config not correctly respected
+        id: test-data
+        uses: ./
+        with:
+          extra-args: '--all-files'
+          config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
+          ignore-failure: 'true'
+      - uses: nick-fields/assert-action@v2
+        name: Then outputs.status value must be 1 as there are some errors
+        with:
+          expected: 1
+          actual: ${{ steps.test-data.outputs.status }}
+          comparison: exact
+
+  it-tests-output-status-success:
+    name: "IT Test - output status should be 0 given pre-commit detected no issue"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Given a pre-commit-config correctly respected
+        id: test-data
+        uses: ./
+        with:
+          extra-args: '--all-files'
+          config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
+          ignore-failure: 'true'
+      - uses: nick-fields/assert-action@v2
+        name: Then outputs.status value must be 0 as there are no errors
+        with:
+          expected: 0
+          actual: ${{ steps.test-data.outputs.status }}
+          comparison: exact
+
+  it-tests-output-logs-failure:
+    name: "IT Test - output logs should contains failures given pre-commit detected some issue"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Given a pre-commit-config not correctly respected
+        id: test-data
+        uses: ./
+        with:
+          extra-args: '--all-files'
+          config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
+          ignore-failure: 'true'
+      - uses: nick-fields/assert-action@v2
+        name: Then it has to contains the failure message in the outputs.logs
+        with:
+          expected: "Failed"
+          actual: ${{ steps.test-data.outputs.logs }}
+          comparison: contains
+
+  it-tests-output-logs-success:
+    name: "IT Test - output logs should contains no failure given pre-commit detected no issue"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Given a pre-commit-config correctly respected
+        id: test-data
+        uses: ./
+        with:
+          extra-args: '--all-files'
+          config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
+          ignore-failure: 'true'
+      - uses: nick-fields/assert-action@v2
+        name: Then it should not contain any 'Failed' in the outputs.logs
+        with:
+          expected: "Failed"
+          actual: ${{ steps.test-data.outputs.logs }}
+          comparison: notContains
+
+  it-tests:
+    name: "All IT Tests have to pass"
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      # Add your tests here so that they prevent merge of broken changes
+      - it-tests-use-input-default-values
+      - it-tests-use-input-extra-args
+      - it-tests-output-status-failure
+      - it-tests-output-status-success
+      - it-tests-output-logs-failure
+      - it-tests-output-logs-success
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
