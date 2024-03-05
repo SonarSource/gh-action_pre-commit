@@ -31,7 +31,29 @@ jobs:
 ```
 
 > Notice: the extra-args parameter defined upper ensure that only files changed within the PR are checked by pre-commit.
-> If you rather like to ensure that **all files** are valid, then use `extra-args: --all-files` instead.
+> If you rather like to ensure that **all files** are valid, have a look at the example below.
+
+### enforce pre-commit to all files systematically
+
+Place a `.pre-commit-config.yaml` at the root of your project
+
+Create a new GitHub workflow:
+
+```yaml
+# .github/workflows/pre-commit.yml
+on:
+  branch:
+    - master
+
+jobs:
+  pre-commit:
+    name: "pre-commit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with last tag
+        with:
+          extra-args: --all-files
+```
 
 ## Options
 
