@@ -46,10 +46,8 @@ jobs:
 This project is using [Semantic Versioning](https://semver.org/).
 
 The `master` branch shall not be referenced by end-users,
-please use tags instead and Renovate to stay up to date.
-
-See [GitHub: Using tags for release management](https://docs.github.com/en/actions/creating-actions/about-custom-actions#using-tags-for-release-management)
-and [GitHub: Keeping your actions up to date with Dependabot](https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically/keeping-your-actions-up-to-date-with-dependabot)
+please use tags instead and [Renovate](https://docs.renovatebot.com/) or
+[Dependabot](https://docs.github.com/en/code-security/dependabot) to stay up to date.
 
 ## Contribute
 
