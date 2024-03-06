@@ -14,7 +14,7 @@ jobs:
         id: test-data
         uses: ./
       - uses: nick-fields/assert-action@v2
-        name: Then outputs.status value must be 0 as the project itself make use of pre-commit validation
+        name: Then outputs.status value must be 0 as the project itself makes use of pre-commit validation
         with:
           expected: 0
           actual: ${{ steps.test-data.outputs.status }}
@@ -30,8 +30,8 @@ jobs:
         uses: ./
         with:
           extra-args: --help
-      - uses: nick-fields/assert-action@v2
-        name: Then outputs.logs should contains some printed documentation
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
+        name: Then outputs.logs should contain some printed documentation
         with:
           expected: "usage: pre-commit run"
           actual: ${{ steps.test-data.outputs.logs }}
@@ -49,7 +49,7 @@ jobs:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
-      - uses: nick-fields/assert-action@v2
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
         name: Then outputs.status value must be 1 as there are some errors
         with:
           expected: 1
@@ -68,7 +68,7 @@ jobs:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
-      - uses: nick-fields/assert-action@v2
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
         name: Then outputs.status value must be 0 as there are no errors
         with:
           expected: 0
@@ -76,7 +76,7 @@ jobs:
           comparison: exact
 
   it-tests-output-logs-failure:
-    name: "IT Test - output logs should contains failures given pre-commit detected some issue"
+    name: "IT Test - output logs should contain failures given pre-commit detected some issue"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -87,15 +87,15 @@ jobs:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
-      - uses: nick-fields/assert-action@v2
-        name: Then it has to contains the failure message in the outputs.logs
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
+        name: Then it has to contain the failure message in the outputs.logs
         with:
           expected: "Failed"
           actual: ${{ steps.test-data.outputs.logs }}
           comparison: contains
 
   it-tests-output-logs-success:
-    name: "IT Test - output logs should contains no failure given pre-commit detected no issue"
+    name: "IT Test - output logs should contain no failure given pre-commit detected no issue"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -106,7 +106,7 @@ jobs:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
-      - uses: nick-fields/assert-action@v2
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
         name: Then it should not contain any 'Failed' in the outputs.logs
         with:
           expected: "Failed"
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
-      # Add your tests here so that they prevent merge of broken changes
+      # Add your tests here so that they prevent the merge of broken changes
       - it-tests-use-input-default-values
       - it-tests-use-input-extra-args
       - it-tests-output-status-failure
@@ -126,6 +126,6 @@ jobs:
       - it-tests-output-logs-failure
       - it-tests-output-logs-success
     steps:
-      - uses: re-actors/alls-green@release/v1
+      - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
           jobs: ${{ toJSON(needs) }}
