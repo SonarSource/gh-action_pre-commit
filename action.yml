@@ -1,0 +1,80 @@
+name: pre-commit
+description: run pre-commit checks
+inputs:
+  config-path:
+    description: Optional, specify an alternative path to a .pre-commit-config.yaml file
+    required: false
+    default: '.pre-commit-config.yaml'
+  extra-args:
+    description: extra arguments passed to pre-commit run command
+    required: false
+    default: ''
+  ignore-failure:
+    description: Optional, do not fail the gh-action in case of pre-commit check failure
+    required: false
+    default: 'false'
+outputs:
+  status:
+    description: Provide the exit code returned by pre-commit run command
+    value: ${{ steps.exec-pre-commit.outputs.status }}
+  logs:
+    description: Logs from the pre-commit run command
+    value: ${{ steps.exec-pre-commit.outputs.logs }}
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+    - name: Fetch origin
+      run: git fetch origin # avoid unknown revision or path not in the working tree when
+      # using --from-ref --to-ref feature of pre-commit
+      shell: bash
+    - id: setup_python
+      name: Setup python
+      uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+      with:
+        python-version: '3.10'
+    - name: Setup pre-commit
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --quiet pre-commit==3.6.2
+      shell: bash
+    - name: Cache installed pre-commit hooks
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pre-commit
+        key: cache-pre-commit|${{ steps.setup_python.outputs.python-version }}|${{ hashFiles(inputs.config-path) }}
+    - name: Check existence of .pre-commit-config.yaml file
+      run: |
+        if [ ! -f ${{ inputs.config-path }} ]; then
+          echo "Could not find any pre-commit configuration at the provided location: '${{ inputs.config-path }}'"
+          exit 1
+        fi
+      shell: bash
+    - id: exec-pre-commit
+      name: Execute pre-commit
+      run: |
+        set +e
+        OUTPUT=$(pre-commit run --config="${{ inputs.config-path }}" --show-diff-on-failure --color=always ${{ inputs.extra-args }})
+        STATUS=$?
+        echo "status=$(echo $STATUS)" >> "$GITHUB_OUTPUT"
+        echo "$OUTPUT" >> pre-commit-exec.log
+        {
+          echo 'logs<<EOF'
+          cat pre-commit-exec.log
+          echo EOF
+        } >> "$GITHUB_OUTPUT"
+        exit 0
+      shell: bash
+    - name: Print execution
+      run: |
+        echo "${{ steps.exec-pre-commit.outputs.logs }}"
+        echo "Exit code: ${{ steps.exec-pre-commit.outputs.status }}"
+      shell: bash
+    - name: Check status and fail if necessary
+      if: ${{ inputs.ignore-failure == 'false' && steps.exec-pre-commit.outputs.status != 0 }}
+      run: |
+        echo "::error ::pre-commit execution detected some issues"
+        exit 1
+      shell: bash
