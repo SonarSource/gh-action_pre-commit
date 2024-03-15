@@ -24,9 +24,10 @@ jobs:
     name: "pre-commit"
     runs-on: ubuntu-latest
     steps:
-      - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with last tag
+      - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with the last tag
         with:
-          extra-args: --from-ref=origin/${{ github.event.pull_request.base.ref }} \
+          extra-args: >
+            --from-ref=origin/${{ github.event.pull_request.base.ref }}
             --to-ref=${{ github.event.pull_request.head.sha }}
 ```
 
