@@ -26,7 +26,9 @@ jobs:
     steps:
       - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with the last tag
         with:
-          extra-args: --from-ref=origin/${{ github.event.pull_request.base.ref }} --to-ref=${{ github.event.pull_request.head.sha }}
+          extra-args: |
+            --from-ref=origin/${{ github.event.pull_request.base.ref }}
+            --to-ref=${{ github.event.pull_request.head.sha }}
 ```
 
 > Notice: the extra-args parameter defined upper ensure that only files changed within the PR are checked by pre-commit.
