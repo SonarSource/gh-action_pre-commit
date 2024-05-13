@@ -9,7 +9,7 @@ jobs:
     name: "IT Test - default inputs values should work fine on this repo"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
       - name: Given the gh-action is used with default values
         id: test-data
         uses: ./
@@ -24,7 +24,7 @@ jobs:
     name: "IT Test - custom extra-args should be honored"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
       - name: Given the gh-action is used with extra-args=--help
         id: test-data
         uses: ./
@@ -41,7 +41,7 @@ jobs:
     name: "IT Test - output status should be 1 given pre-commit detected some issue"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
       - name: Given a pre-commit-config not correctly respected
         id: test-data
         uses: ./
@@ -60,7 +60,7 @@ jobs:
     name: "IT Test - output status should be 0 given pre-commit detected no issue"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
       - name: Given a pre-commit-config correctly respected
         id: test-data
         uses: ./
@@ -79,7 +79,7 @@ jobs:
     name: "IT Test - output logs should contain failures given pre-commit detected some issue"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
       - name: Given a pre-commit-config not correctly respected
         id: test-data
         uses: ./
@@ -98,7 +98,7 @@ jobs:
     name: "IT Test - output logs should contain no failure given pre-commit detected no issue"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
       - name: Given a pre-commit-config correctly respected
         id: test-data
         uses: ./
