@@ -1,0 +1,34 @@
+name: Jira Commit Checker
+
+# Run on push to any branch
+on: [pull_request]
+
+jobs:
+  Jira_Commit_Checker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: '${{ github.event.pull_request.base.ref }}'
+
+      - name: Prep
+        run: |
+          # Checkout branch
+          git checkout -q ${{ github.event.pull_request.head.ref }}
+          
+          # Set variables
+          BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+          
+          # Write BASE_BRANCH to GITHUB_ENV so commit checker can use
+          echo "BASE_BRANCH=$BASE_BRANCH" | tee -a $GITHUB_ENV
+
+      - name: Jira Commit Checker
+        id: jira_commit_checker
+        uses: KyMidd/ActionJiraCommitValidate@a35fef69559249adf4d0dcffa97a95d254db2ab0 # v1.0.2
+        with:
+          jira-username: ${{ secrets.JIRA_COMMIT_CHECKER_USERNAME }}
+          jira-api-token: ${{ secrets.JIRA_COMMIT_CHECKER_API_TOKEN }}
+          JIRA_URL: 'https://sonarsource.atlassian.net'
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
