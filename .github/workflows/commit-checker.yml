@@ -31,4 +31,4 @@ jobs:
           jira-username: ${{ secrets.JIRA_COMMIT_CHECKER_USERNAME }}
           jira-api-token: ${{ secrets.JIRA_COMMIT_CHECKER_API_TOKEN }}
           JIRA_URL: 'https://sonarsource.atlassian.net'
-          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
