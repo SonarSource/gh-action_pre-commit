@@ -63,7 +63,6 @@ runs:
       with:
         key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles(inputs.config-path) }}
         path: ~/.cache/pre-commit
-
     - id: exec-pre-commit
       name: Execute pre-commit
       run: |
