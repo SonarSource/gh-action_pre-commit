@@ -44,7 +44,7 @@ runs:
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
       with:
         path: ~/.cache/pre-commit
-        key: cache-pre-commit|${{ steps.setup_python.outputs.python-version }}|${{ hashFiles(inputs.config-path) }}
+        key: cache-pre-commit|${{ env.pythonLocation }}|${{ hashFiles(inputs.config-path) }}
     - name: Check existence of .pre-commit-config.yaml file
       run: |
         if [ ! -f ${{ inputs.config-path }} ]; then
