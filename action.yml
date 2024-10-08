@@ -40,7 +40,7 @@ runs:
         python -m pip install --upgrade pip
         python -m pip install --quiet pre-commit==3.7.1
       shell: bash
-    - uses: actions/cache/restore@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+    - uses: actions/cache/restore@2cdf405574d6ef1f33a1d12acccd3ae82f47b3f2 # v4.1.0
       id: restore-cache
       with:
         key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles(inputs.config-path) }}
@@ -58,7 +58,7 @@ runs:
       run: |
         pre-commit install-hooks --config="${{ inputs.config-path }}"
       shell: bash
-    - uses: actions/cache/save@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+    - uses: actions/cache/save@2cdf405574d6ef1f33a1d12acccd3ae82f47b3f2 # v4.1.0
       if: steps.restore-cache.outputs.cache-hit != 'true' &&
           github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
       with:
