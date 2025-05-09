@@ -7,7 +7,7 @@ jobs:
 
   it-tests-use-input-default-values:
     name: "IT Test - default inputs values should work fine on this repo"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Given the gh-action is used with default values
@@ -22,7 +22,7 @@ jobs:
 
   it-tests-use-input-extra-args:
     name: "IT Test - custom extra-args should be honored"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Given the gh-action is used with extra-args=--help
@@ -39,7 +39,7 @@ jobs:
 
   it-tests-output-status-failure:
     name: "IT Test - output status should be 1 given pre-commit detected some issue"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Given a pre-commit-config not correctly respected
@@ -58,7 +58,7 @@ jobs:
 
   it-tests-output-status-success:
     name: "IT Test - output status should be 0 given pre-commit detected no issue"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Given a pre-commit-config correctly respected
@@ -77,7 +77,7 @@ jobs:
 
   it-tests-output-logs-failure:
     name: "IT Test - output logs should contain failures given pre-commit detected some issue"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Given a pre-commit-config not correctly respected
@@ -96,7 +96,7 @@ jobs:
 
   it-tests-output-logs-success:
     name: "IT Test - output logs should contain no failure given pre-commit detected no issue"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Given a pre-commit-config correctly respected
@@ -115,7 +115,7 @@ jobs:
 
   it-tests:
     name: "All IT Tests have to pass"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     if: always()
     needs:
       # Add your tests here so that they prevent the merge of broken changes
