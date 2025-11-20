@@ -32,7 +32,7 @@ runs:
         echo "CONFIG_PATH=$CONFIG_PATH" >> "$GITHUB_ENV"
         echo "EXTRA_ARGS=$EXTRA_ARGS"   >> "$GITHUB_ENV"
     - name: Checkout
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
     - name: Fetch origin
       run: git fetch origin # avoid unknown revision or path not in the working tree when
       # using --from-ref --to-ref feature of pre-commit
