@@ -4,9 +4,13 @@ on:
 jobs:
   pre-commit:
     name: "pre-commit"
-    runs-on: github-ubuntu-latest-s
+    runs-on: sonar-xs
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: SonarSource/ci-github-actions/config-npm@v1
       - uses: ./
         with:
           extra-args: >
