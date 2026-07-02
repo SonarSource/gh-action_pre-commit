@@ -9,11 +9,11 @@ jobs:
     name: "IT Test - default inputs values should work fine on this repo"
     runs-on: github-ubuntu-latest-s
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given the gh-action is used with default values
         id: test-data
         uses: ./
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4
         name: Then outputs.status value must be 0 as the project itself makes use of pre-commit validation
         with:
           expected: 0
@@ -24,13 +24,13 @@ jobs:
     name: "IT Test - custom extra-args should be honored"
     runs-on: github-ubuntu-latest-s
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given the gh-action is used with extra-args=--help
         id: test-data
         uses: ./
         with:
           extra-args: --help
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
         name: Then outputs.logs should contain some printed documentation
         with:
           expected: "usage: pre-commit run"
@@ -41,7 +41,7 @@ jobs:
     name: "IT Test - output status should be 1 given pre-commit detected some issue"
     runs-on: github-ubuntu-latest-s
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given a pre-commit-config not correctly respected
         id: test-data
         uses: ./
@@ -49,7 +49,7 @@ jobs:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
         name: Then outputs.status value must be 1 as there are some errors
         with:
           expected: 1
@@ -60,7 +60,7 @@ jobs:
     name: "IT Test - output status should be 0 given pre-commit detected no issue"
     runs-on: github-ubuntu-latest-s
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given a pre-commit-config correctly respected
         id: test-data
         uses: ./
@@ -68,7 +68,7 @@ jobs:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
         name: Then outputs.status value must be 0 as there are no errors
         with:
           expected: 0
@@ -79,7 +79,7 @@ jobs:
     name: "IT Test - output logs should contain failures given pre-commit detected some issue"
     runs-on: github-ubuntu-latest-s
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given a pre-commit-config not correctly respected
         id: test-data
         uses: ./
@@ -87,7 +87,7 @@ jobs:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
         name: Then it has to contain the failure message in the outputs.logs
         with:
           expected: "Failed"
@@ -98,7 +98,7 @@ jobs:
     name: "IT Test - output logs should contain no failure given pre-commit detected no issue"
     runs-on: github-ubuntu-latest-s
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given a pre-commit-config correctly respected
         id: test-data
         uses: ./
@@ -106,7 +106,7 @@ jobs:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
         name: Then it should not contain any 'Failed' in the outputs.logs
         with:
           expected: "Failed"
