@@ -8,16 +8,6 @@ Run [pre-commit](https://pre-commit.com/) hooks at CI level
 
 ## Usage
 
-### Requirements
-
-The calling repository must declare at least these tools in `mise.toml` (the action installs them via `jdx/mise-action`):
-
-```toml
-[tools]
-python = "3.12"
-pre-commit = "3.7.1" # or newer
-```
-
 ### enforce pre-commit only to files changed within a pull request
 
 Place a `.pre-commit-config.yaml` at the root of your project

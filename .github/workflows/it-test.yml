@@ -3,6 +3,10 @@ on:
   push:
     branches: [master]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
 
   it-tests-use-input-default-values:

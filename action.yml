@@ -37,23 +37,24 @@ runs:
       run: git fetch origin # avoid unknown revision or path not in the working tree when
       # using --from-ref --to-ref feature of pre-commit
       shell: bash
-    # Prefer mise over actions/setup-python: setup-python upgrades pip via pypi.org,
-    # which is blocked on our self-hosted runners. Tools come from the repo mise.toml.
-    - name: Setup mise
-      uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
+    # Point pip at Artifactory before setup-python so pip upgrade does not hit pypi.org.
+    - uses: SonarSource/ci-github-actions/config-pip@3c6565f5a65282d333ab60c8a0fa733c09e613d3 # 1.8.7
       with:
-        version: 2026.7.13
-    - name: Export tool versions for cache key
-      shell: bash
+        disable-caching: true
+    - id: setup_python
+      name: Setup python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.14'
+    - name: Setup pre-commit
       run: |
-        echo "PYTHON_VERSION=$(python --version | awk '{print $2}')" >> "$GITHUB_ENV"
-        echo "PRE_COMMIT_VERSION=$(pre-commit --version | awk '{print $2}')" >> "$GITHUB_ENV"
-        python --version
-        pre-commit --version
+        python -m pip install --upgrade pip
+        python -m pip install --quiet pre-commit==3.7.1
+      shell: bash
     - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       id: restore-cache
       with:
-        key: pre-commit|${{ runner.os }}-${{ runner.arch }}|python-${{ env.PYTHON_VERSION }}|pre-commit-${{ env.PRE_COMMIT_VERSION }}|${{ hashFiles(env.CONFIG_PATH) }}
+        key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles(env.CONFIG_PATH) }}
         path: ~/.cache/pre-commit
     - name: Check existence of .pre-commit-config.yaml file
       run: |
@@ -72,7 +73,7 @@ runs:
       if: steps.restore-cache.outputs.cache-hit != 'true' &&
           github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
       with:
-        key: pre-commit|${{ runner.os }}-${{ runner.arch }}|python-${{ env.PYTHON_VERSION }}|pre-commit-${{ env.PRE_COMMIT_VERSION }}|${{ hashFiles(env.CONFIG_PATH) }}
+        key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles(env.CONFIG_PATH) }}
         path: ~/.cache/pre-commit
     - id: exec-pre-commit
       name: Execute pre-commit
