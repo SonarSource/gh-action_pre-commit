@@ -51,6 +51,34 @@ runs:
         mise use --global python@3.12 pre-commit@3.7.1
         python --version
         pre-commit --version
+    - name: Resolve Artifactory reader role
+      id: artifactory-role
+      shell: bash
+      run: |
+        if [ "${{ github.event.repository.visibility }}" = "public" ]; then
+          echo "role=public-reader" >> "$GITHUB_OUTPUT"
+        else
+          echo "role=private-reader" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Get Artifactory credentials
+      id: artifactory
+      uses: SonarSource/vault-action-wrapper@881045d830534a70ec3c7c275fa3714412c8ff6e # 3.6.1
+      with:
+        secrets: |
+          development/artifactory/token/{REPO_OWNER_NAME_DASH}-${{ steps.artifactory-role.outputs.role }} username | ARTIFACTORY_USERNAME;
+          development/artifactory/token/{REPO_OWNER_NAME_DASH}-${{ steps.artifactory-role.outputs.role }} access_token | ARTIFACTORY_ACCESS_TOKEN;
+    - name: Configure pip to use Artifactory
+      shell: bash
+      env:
+        ARTIFACTORY_USERNAME: ${{ fromJSON(steps.artifactory.outputs.vault).ARTIFACTORY_USERNAME }}
+        ARTIFACTORY_ACCESS_TOKEN: ${{ fromJSON(steps.artifactory.outputs.vault).ARTIFACTORY_ACCESS_TOKEN }}
+      run: |
+        mkdir -p "$HOME/.pip"
+        {
+          echo '[global]'
+          echo "index-url = https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_ACCESS_TOKEN}@repox.jfrog.io/artifactory/api/pypi/sonarsource-pypi/simple"
+        } > "$HOME/.pip/pip.conf"
+        echo "Configured pip index-url to Artifactory sonarsource-pypi"
     - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       id: restore-cache
       with:
