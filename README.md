@@ -23,6 +23,9 @@ jobs:
   pre-commit:
     name: "pre-commit"
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required to configure pip with Repox
+      contents: read
     steps:
       - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with the last tag
         with:
@@ -50,6 +53,9 @@ jobs:
   pre-commit:
     name: "pre-commit"
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required to configure pip with Repox
+      contents: read
     steps:
       - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with last tag
         with:

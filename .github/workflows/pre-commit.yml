@@ -1,6 +1,10 @@
 on:
   pull_request:
 
+permissions:
+  id-token: write # Required by config-pip for Vault OIDC authentication
+  contents: read
+
 jobs:
   pre-commit:
     name: "pre-commit"

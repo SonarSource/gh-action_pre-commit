@@ -3,6 +3,10 @@ on:
   push:
     branches: [master]
 
+permissions:
+  id-token: write # Required by config-pip for Vault OIDC authentication
+  contents: read
+
 jobs:
 
   it-tests-use-input-default-values:
