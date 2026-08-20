@@ -29,8 +29,26 @@ runs:
       run: |
         CONFIG_PATH="${{ inputs.config-path }}"
         EXTRA_ARGS="${{ inputs.extra-args }}"
-        echo "CONFIG_PATH=$CONFIG_PATH" >> "$GITHUB_ENV"
-        echo "EXTRA_ARGS=$EXTRA_ARGS"   >> "$GITHUB_ENV"
+        {
+          echo "CONFIG_PATH=$CONFIG_PATH"
+          echo "EXTRA_ARGS=$EXTRA_ARGS"
+          echo "VIRTUALENV_PIP=embed"
+          echo "VIRTUALENV_SETUPTOOLS=embed"
+          echo "VIRTUALENV_WHEEL=embed"
+          echo "VIRTUALENV_DOWNLOAD=false"
+        } >> "$GITHUB_ENV"
+        if [[ -z "${PIP_INDEX_URL:-}" && -f "${HOME}/.pip/pip.conf" ]]; then
+          index_url="$(python3 -c 'import configparser, pathlib; c = configparser.ConfigParser(); c.read(pathlib.Path.home() / ".pip" / "pip.conf"); print(c["global"]["index-url"])')"
+          echo "::add-mask::${index_url}"
+          host="$(python3 -c 'import configparser, pathlib, urllib.parse; c = configparser.ConfigParser(); c.read(pathlib.Path.home() / ".pip" / "pip.conf"); print(urllib.parse.urlparse(c["global"]["index-url"]).hostname or "")')"
+          {
+            echo "PIP_INDEX_URL=${index_url}"
+            echo "VIRTUALENV_INDEX_URL=${index_url}"
+            if [[ -n "${host}" ]]; then
+              echo "PIP_TRUSTED_HOST=${host}"
+            fi
+          } >> "$GITHUB_ENV"
+        fi
     - name: Checkout
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
     - name: Fetch origin
