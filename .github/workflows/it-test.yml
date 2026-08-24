@@ -13,6 +13,8 @@ jobs:
       - name: Given the gh-action is used with default values
         id: test-data
         uses: ./
+      - name: Then virtualenv periodic updates are disabled
+        run: test "$VIRTUALENV_NO_PERIODIC_UPDATE" = "1"
       - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
         name: Then outputs.status value must be 0 as the project itself makes use of pre-commit validation
         with:
