@@ -14,6 +14,10 @@ Place a `.pre-commit-config.yaml` at the root of your project
 
 Create a new GitHub workflow:
 
+This action installs Python and `pre-commit` via pip. On `sonar-*` runners, public
+`pypi.org` is blocked (Repox / BUILD-10865), so callers must grant Vault OIDC so
+`config-pip` can point pip at `repox.jfrog.io` before `setup-python` upgrades pip.
+
 ```yaml
 # .github/workflows/pre-commit.yml
 on:
@@ -23,6 +27,9 @@ jobs:
   pre-commit:
     name: "pre-commit"
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
     steps:
       - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with the last tag
         with:
@@ -50,6 +57,9 @@ jobs:
   pre-commit:
     name: "pre-commit"
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
     steps:
       - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with last tag
         with:
@@ -63,6 +73,13 @@ jobs:
 | `config-path`   | Used to specify a custom path to a given `.pre-commit-config.yaml` | `.pre-commit-config.yaml` |
 | `extra-args`    | Used to pass extra pre-commit args to the pre-commit run command   | -                         |
 | `ignore-failure` | Used to not fail the gh-action in case of pre-commit check failure | `false`                    |
+
+### Required job permissions
+
+| Permission        | Why                                                                 |
+|-------------------|---------------------------------------------------------------------|
+| `id-token: write` | Lets `config-pip` authenticate to Vault and configure Repox for pip |
+| `contents: write` | Required by `config-pip@v2` to allocate a build number via git refs   |
 
 ## Versioning
 
