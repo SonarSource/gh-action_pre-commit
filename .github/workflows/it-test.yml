@@ -3,6 +3,10 @@ on:
   push:
     branches: [master]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
 
   it-tests-use-input-default-values:
@@ -113,6 +117,21 @@ jobs:
           actual: ${{ steps.test-data.outputs.logs }}
           comparison: notContains
 
+  it-tests-repox-runner:
+    name: "IT Test - pip and npm hook installs work on a sonar-* runner (Repox)"
+    runs-on: sonar-xs
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Given the gh-action is used with default values on a sonar-* runner
+        id: test-data
+        uses: ./
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then outputs.status value must be 0 as the project itself makes use of pre-commit validation
+        with:
+          expected: 0
+          actual: ${{ steps.test-data.outputs.status }}
+          comparison: exact
+
   it-tests:
     name: "All IT Tests have to pass"
     runs-on: github-ubuntu-latest-s
@@ -125,6 +144,7 @@ jobs:
       - it-tests-output-status-success
       - it-tests-output-logs-failure
       - it-tests-output-logs-success
+      - it-tests-repox-runner
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:

@@ -37,6 +37,19 @@ runs:
       run: git fetch origin # avoid unknown revision or path not in the working tree when
       # using --from-ref --to-ref feature of pre-commit
       shell: bash
+    - name: Fetch Repox credentials
+      uses: SonarSource/vault-action-wrapper@881045d830534a70ec3c7c275fa3714412c8ff6e # 3.6.1
+      id: repox-secrets
+      with:
+        secrets: |
+          development/artifactory/token/{REPO_OWNER_NAME_DASH}-${{ github.event.repository.visibility == 'public' && 'public-reader' || 'private-reader' }} username | ARTIFACTORY_USERNAME;
+          development/artifactory/token/{REPO_OWNER_NAME_DASH}-${{ github.event.repository.visibility == 'public' && 'public-reader' || 'private-reader' }} access_token | ARTIFACTORY_ACCESS_TOKEN;
+    - name: Configure Repox for pip and npm
+      shell: bash
+      env:
+        ARTIFACTORY_USERNAME: ${{ fromJSON(steps.repox-secrets.outputs.vault).ARTIFACTORY_USERNAME }}
+        ARTIFACTORY_ACCESS_TOKEN: ${{ fromJSON(steps.repox-secrets.outputs.vault).ARTIFACTORY_ACCESS_TOKEN }}
+      run: bash "${{ github.action_path }}/scripts/configure-repox.sh"
     - id: setup_python
       name: Setup python
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
