@@ -37,6 +37,10 @@ runs:
       run: git fetch origin # avoid unknown revision or path not in the working tree when
       # using --from-ref --to-ref feature of pre-commit
       shell: bash
+    - name: Configure pip to use Repox
+      uses: SonarSource/ci-github-actions/config-pip@v2
+      with:
+        disable-caching: true
     - id: setup_python
       name: Setup python
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
