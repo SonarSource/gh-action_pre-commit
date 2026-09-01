@@ -14,6 +14,11 @@ Place a `.pre-commit-config.yaml` at the root of your project
 
 Create a new GitHub workflow:
 
+This action installs Python and `pre-commit` via pip. On `sonar-*` runners, public
+package registries are blocked, so callers must grant Vault OIDC.
+The action configures authenticated Repox for **pip** and **npm** before
+installing dependencies.
+
 ```yaml
 # .github/workflows/pre-commit.yml
 on:
@@ -23,6 +28,9 @@ jobs:
   pre-commit:
     name: "pre-commit"
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with the last tag
         with:
@@ -50,6 +58,9 @@ jobs:
   pre-commit:
     name: "pre-commit"
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with last tag
         with:
@@ -63,6 +74,27 @@ jobs:
 | `config-path`   | Used to specify a custom path to a given `.pre-commit-config.yaml` | `.pre-commit-config.yaml` |
 | `extra-args`    | Used to pass extra pre-commit args to the pre-commit run command   | -                         |
 | `ignore-failure` | Used to not fail the gh-action in case of pre-commit check failure | `false`                    |
+
+### Required job permissions
+
+| Permission        | Why                                                                 |
+|-------------------|---------------------------------------------------------------------|
+| `id-token: write` | Lets the action authenticate to Vault and configure Repox for pip/npm |
+| `contents: read`  | Checkout and hook installation                                      |
+
+### Package registries used by common hooks
+
+Across SonarSource repos, pre-commit hooks most often install from:
+
+| Registry | Used by | Covered by this action |
+|----------|---------|------------------------|
+| PyPI (`pypi.org`) | `pre-commit-hooks`, `yamllint`, `check-jsonschema`, `sonar-secrets` | Yes (`PIP_INDEX_URL`, `VIRTUALENV_INDEX_URL`) |
+| npm (`registry.npmjs.org`) | `markdownlint-cli`, `renovatebot/pre-commit-hooks`, `mirrors-eslint` | Yes (`NPM_CONFIG_REGISTRY`, `~/.npmrc`) |
+| Go module proxy | `actionlint`, `terraform-docs` (golang hooks) | No — uses `proxy.golang.org` |
+| RubyGems | `markdownlint/markdownlint` (legacy) | No |
+| Maven / Gradle | Not used by pre-commit hook runtimes in SonarSource | N/A |
+
+`language: script` / `language: system` hooks (e.g. `shellcheck`, `terraform-fmt`) do not download packages.
 
 ## Versioning
 
