@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Configure pip, npm, and nodeenv to use authenticated Repox.
+# Configure pip and npm to use authenticated Repox.
 #
 # Required environment variables:
 # - ARTIFACTORY_USERNAME
@@ -22,19 +22,17 @@ repox_host="${ARTIFACTORY_URL#https://}"
 repox_host="${repox_host#http://}"
 repox_hostname="${repox_host%%/*}"
 
-# ConfigParser interpolation treats % as a sequence; escape for pip.conf / nodeenvrc.
+# ConfigParser interpolation treats % as a sequence; escape for pip.conf.
 ini_escape() {
   printf '%s' "${1//%/%%}"
 }
 
 pip_index_url="${repox_scheme}://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_ACCESS_TOKEN}@${repox_host}/api/pypi/sonarsource-pypi/simple"
 npm_registry="${ARTIFACTORY_URL}/api/npm/npm"
-nodejs_mirror="${repox_scheme}://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_ACCESS_TOKEN}@${repox_host}/nodejs-dist"
 
 echo "::add-mask::${ARTIFACTORY_USERNAME}"
 echo "::add-mask::${ARTIFACTORY_ACCESS_TOKEN}"
 echo "::add-mask::${pip_index_url}"
-echo "::add-mask::${nodejs_mirror}"
 
 umask 077
 
@@ -61,13 +59,6 @@ always-auth=true
 EOF
 chmod 600 "${HOME}/.npmrc"
 
-# nodeenv reads ~/.nodeenvrc; it does not honor NODEJS_ORG_MIRROR.
-cat > "${HOME}/.nodeenvrc" <<EOF
-[nodeenv]
-mirror = $(ini_escape "${nodejs_mirror}")
-EOF
-chmod 600 "${HOME}/.nodeenvrc"
-
 {
   echo "PIP_CONFIG_FILE=${HOME}/.pip/pip.conf"
   echo "PIP_TRUSTED_HOST=${repox_hostname}"
@@ -77,7 +68,4 @@ chmod 600 "${HOME}/.nodeenvrc"
   echo "VIRTUALENV_DOWNLOAD=false"
   echo "NPM_CONFIG_GLOBALCONFIG=${npmrc}"
   echo "NPM_CONFIG_REGISTRY=${npm_registry}"
-  # node-gyp (and some npm native builds) still read these env vars.
-  echo "NODEJS_ORG_MIRROR=${nodejs_mirror}"
-  echo "NODE_MIRROR=${nodejs_mirror}"
 } >> "${GITHUB_ENV}"
