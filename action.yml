@@ -79,7 +79,7 @@ runs:
       if: steps.restore-cache.outputs.cache-hit != 'true'
       name: Install pre-commit dependencies
       env:
-        GIT_TERMINAL_PROMPT: '0'
+        GIT_ASKPASS: /bin/true   # allowlisted by pre-commit's no_git_env
         GIT_CONFIG_COUNT: '1'
         GIT_CONFIG_KEY_0: "url.https://x-access-token:${{ github.token }}@github.com/.insteadof"
         GIT_CONFIG_VALUE_0: "https://github.com/"
@@ -95,7 +95,7 @@ runs:
     - id: exec-pre-commit
       name: Execute pre-commit
       env:
-        GIT_TERMINAL_PROMPT: '0'
+        GIT_ASKPASS: /bin/true   # allowlisted by pre-commit's no_git_env
         GIT_CONFIG_COUNT: '1'
         GIT_CONFIG_KEY_0: "url.https://x-access-token:${{ github.token }}@github.com/.insteadof"
         GIT_CONFIG_VALUE_0: "https://github.com/"
