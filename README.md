@@ -90,7 +90,7 @@ jobs:
 | Permission        | Why                                                                   |
 | ----------------- | --------------------------------------------------------------------- |
 | `id-token: write` | Lets the action authenticate to Vault and configure Repox for pip/npm |
-| `contents: read`  | Checkout and hook installation                                        |
+| `contents: read`  | Checkout, fetching refs, and cloning hook repos from github.com       |
 
 ### Package registries used by common hooks
 
