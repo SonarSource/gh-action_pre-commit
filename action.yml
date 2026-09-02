@@ -59,9 +59,21 @@ runs:
           exit 1
         fi
       shell: bash
+    # Step-scoped insteadOf (not `git config --global`) so only these two steps
+    # rewrite github.com URLs, letting hook clones in ~/.cache/pre-commit use
+    # GITHUB_TOKEN while the rest of the job (incl. `git fetch origin` above)
+    # keeps using checkout's persist-credentials extraheader untouched.
+    # NOTE: within these steps the workspace remote is rewritten too, so a hook
+    # that performs a network git op on `origin` will send both the extraheader
+    # and URL basic credentials.
     - id: setup-pre-commit-hooks
       if: steps.restore-cache.outputs.cache-hit != 'true'
       name: Install pre-commit dependencies
+      env:
+        GIT_ASKPASS: /bin/true   # allowlisted by pre-commit's no_git_env
+        GIT_CONFIG_COUNT: '1'
+        GIT_CONFIG_KEY_0: "url.https://x-access-token:${{ github.token }}@github.com/.insteadof"
+        GIT_CONFIG_VALUE_0: "https://github.com/"
       run: |
         pre-commit install-hooks --config="$CONFIG_PATH"
       shell: bash
@@ -73,6 +85,11 @@ runs:
         path: ~/.cache/pre-commit
     - id: exec-pre-commit
       name: Execute pre-commit
+      env:
+        GIT_ASKPASS: /bin/true   # allowlisted by pre-commit's no_git_env
+        GIT_CONFIG_COUNT: '1'
+        GIT_CONFIG_KEY_0: "url.https://x-access-token:${{ github.token }}@github.com/.insteadof"
+        GIT_CONFIG_VALUE_0: "https://github.com/"
       run: |
         set +e
         OUTPUT=$(pre-commit run --config="$CONFIG_PATH" --show-diff-on-failure --color=always $EXTRA_ARGS)
