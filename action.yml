@@ -72,9 +72,13 @@ runs:
           exit 1
         fi
       shell: bash
-    # Step-scoped insteadOf (not git config --global) so hook clones in
-    # ~/.cache/pre-commit use GITHUB_TOKEN without adding a second Authorization
-    # header on the workspace remote (checkout persist-credentials extraheader).
+    # Step-scoped insteadOf (not `git config --global`) so only these two steps
+    # rewrite github.com URLs, letting hook clones in ~/.cache/pre-commit use
+    # GITHUB_TOKEN while the rest of the job (incl. `git fetch origin` above)
+    # keeps using checkout's persist-credentials extraheader untouched.
+    # NOTE: within these steps the workspace remote is rewritten too, so a hook
+    # that performs a network git op on `origin` will send both the extraheader
+    # and URL basic credentials.
     - id: setup-pre-commit-hooks
       if: steps.restore-cache.outputs.cache-hit != 'true'
       name: Install pre-commit dependencies
