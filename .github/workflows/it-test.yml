@@ -7,13 +7,18 @@ permissions:
   id-token: write
   contents: read
 
+# sonar-xs does not ship shellcheck. Any job that executes this repo's
+# .pre-commit-config.yaml must run SonarSource/mise-action-wrapper@v1 first.
+# Fixture configs under .github/tests/resources/ do not use shellcheck.
+
 jobs:
 
   it-tests-use-input-default-values:
     name: "IT Test - default inputs values should work fine on this repo"
-    runs-on: github-ubuntu-latest-s
+    runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: SonarSource/mise-action-wrapper@v1
       - name: Given the gh-action is used with default values
         id: test-data
         uses: ./
@@ -24,9 +29,144 @@ jobs:
           actual: ${{ steps.test-data.outputs.status }}
           comparison: exact
 
+  it-tests-default-extra-args:
+    name: "IT Test - default extra-args is the PR diff on pull_request and --all-files on push"
+    runs-on: sonar-xs
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Given fail-check config and no extra-args
+        id: test-data
+        uses: ./
+        with:
+          config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
+          ignore-failure: 'true'
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then PR runs skip files outside the diff (status 0); branch runs scan all files (status 1)
+        with:
+          expected: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+          actual: ${{ steps.test-data.outputs.status }}
+          comparison: exact
+
+  it-tests-skip-checkout:
+    name: "IT Test - skips checkout when the workspace is already this repository"
+    runs-on: sonar-xs
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Given an uncommitted change that a fresh checkout would discard
+        run: echo "skip-checkout-marker" >> README.md
+      - name: When the action runs against this workspace
+        uses: ./
+        with:
+          extra-args: --help
+          config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
+      - name: Read the working tree
+        id: marker
+        run: |
+          {
+            echo "readme<<EOF"
+            cat README.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then the uncommitted change is still present
+        with:
+          expected: skip-checkout-marker
+          actual: ${{ steps.marker.outputs.readme }}
+          comparison: contains
+
+  it-tests-does-checkout:
+    name: "IT Test - checks out when origin is not this repository"
+    runs-on: sonar-xs
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Given an uncommitted change and an origin that is a different repository
+        run: |
+          echo "must-checkout-marker" >> README.md
+          git remote set-url origin https://github.com/octocat/Hello-World.git
+      - name: When the action runs against this workspace
+        uses: ./
+        with:
+          extra-args: --help
+          config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
+      - name: Read the working tree
+        id: marker
+        run: |
+          {
+            echo "readme<<EOF"
+            cat README.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then a fresh checkout discarded the uncommitted change
+        with:
+          expected: must-checkout-marker
+          actual: ${{ steps.marker.outputs.readme }}
+          comparison: notContains
+
+  it-tests-fetch-missing-refs:
+    name: "IT Test - fetches origin when from-ref is missing locally"
+    runs-on: sonar-xs
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+      - name: Given origin/base is not a local ref and a marker checkout would discard
+        id: before
+        env:
+          BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+        run: |
+          echo "fetch-missing-refs-marker" >> README.md
+          git update-ref -d "refs/remotes/origin/${BASE}" || true
+          if git rev-parse --verify --quiet "origin/${BASE}^{commit}" >/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then the from-ref is missing before the action
+        with:
+          expected: "false"
+          actual: ${{ steps.before.outputs.present }}
+          comparison: exact
+      - name: When extra-args require that from-ref
+        uses: ./
+        with:
+          extra-args: --from-ref=origin/${{ github.event.pull_request.base.ref || github.event.repository.default_branch }} --to-ref=${{ github.sha }}
+          config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
+          ignore-failure: 'true'
+      - name: Read whether origin/base exists and the marker remains
+        id: after
+        env:
+          BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+        run: |
+          if git rev-parse --verify --quiet "origin/${BASE}^{commit}" >/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "readme<<EOF"
+            cat README.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then origin was fetched so the from-ref resolves
+        with:
+          expected: "true"
+          actual: ${{ steps.after.outputs.present }}
+          comparison: exact
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then checkout was skipped (so the fetch script restored the ref, not checkout)
+        with:
+          expected: fetch-missing-refs-marker
+          actual: ${{ steps.after.outputs.readme }}
+          comparison: contains
+
   it-tests-use-input-extra-args:
     name: "IT Test - custom extra-args should be honored"
-    runs-on: github-ubuntu-latest-s
+    runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given the gh-action is used with extra-args=--help
@@ -34,6 +174,7 @@ jobs:
         uses: ./
         with:
           extra-args: --help
+          config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
       - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
         name: Then outputs.logs should contain some printed documentation
         with:
@@ -41,9 +182,9 @@ jobs:
           actual: ${{ steps.test-data.outputs.logs }}
           comparison: contains
 
-  it-tests-output-status-failure:
-    name: "IT Test - output status should be 1 given pre-commit detected some issue"
-    runs-on: github-ubuntu-latest-s
+  it-tests-output-on-failure:
+    name: "IT Test - outputs surface a pre-commit failure without failing the job"
+    runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given a pre-commit-config not correctly respected
@@ -54,53 +195,21 @@ jobs:
           config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
       - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.status value must be 1 as there are some errors
+        name: Then outputs.status value must be 1
         with:
           expected: 1
           actual: ${{ steps.test-data.outputs.status }}
           comparison: exact
-
-  it-tests-output-status-success:
-    name: "IT Test - output status should be 0 given pre-commit detected no issue"
-    runs-on: github-ubuntu-latest-s
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: Given a pre-commit-config correctly respected
-        id: test-data
-        uses: ./
-        with:
-          extra-args: '--all-files'
-          config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
-          ignore-failure: 'true'
       - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.status value must be 0 as there are no errors
-        with:
-          expected: 0
-          actual: ${{ steps.test-data.outputs.status }}
-          comparison: exact
-
-  it-tests-output-logs-failure:
-    name: "IT Test - output logs should contain failures given pre-commit detected some issue"
-    runs-on: github-ubuntu-latest-s
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: Given a pre-commit-config not correctly respected
-        id: test-data
-        uses: ./
-        with:
-          extra-args: '--all-files'
-          config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
-          ignore-failure: 'true'
-      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then it has to contain the failure message in the outputs.logs
+        name: Then outputs.logs contain the failure
         with:
           expected: "Failed"
           actual: ${{ steps.test-data.outputs.logs }}
           comparison: contains
 
-  it-tests-output-logs-success:
-    name: "IT Test - output logs should contain no failure given pre-commit detected no issue"
-    runs-on: github-ubuntu-latest-s
+  it-tests-output-on-success:
+    name: "IT Test - outputs surface a pre-commit success"
+    runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given a pre-commit-config correctly respected
@@ -111,41 +220,32 @@ jobs:
           config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
           ignore-failure: 'true'
       - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then it should not contain any 'Failed' in the outputs.logs
+        name: Then outputs.status value must be 0
+        with:
+          expected: 0
+          actual: ${{ steps.test-data.outputs.status }}
+          comparison: exact
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then outputs.logs do not contain a failure
         with:
           expected: "Failed"
           actual: ${{ steps.test-data.outputs.logs }}
           comparison: notContains
 
-  it-tests-repox-runner:
-    name: "IT Test - pip and npm hook installs work on a sonar-* runner (Repox)"
-    runs-on: sonar-xs
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: SonarSource/mise-action-wrapper@v1
-      - name: Given the gh-action is used with default values on a sonar-* runner
-        id: test-data
-        uses: ./
-      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.status value must be 0 as the project itself makes use of pre-commit validation
-        with:
-          expected: 0
-          actual: ${{ steps.test-data.outputs.status }}
-          comparison: exact
-
   it-tests:
     name: "All IT Tests have to pass"
-    runs-on: github-ubuntu-latest-s
+    runs-on: ubuntu-latest
     if: always()
     needs:
       # Add your tests here so that they prevent the merge of broken changes
       - it-tests-use-input-default-values
+      - it-tests-default-extra-args
+      - it-tests-skip-checkout
+      - it-tests-does-checkout
+      - it-tests-fetch-missing-refs
       - it-tests-use-input-extra-args
-      - it-tests-output-status-failure
-      - it-tests-output-status-success
-      - it-tests-output-logs-failure
-      - it-tests-output-logs-success
-      - it-tests-repox-runner
+      - it-tests-output-on-failure
+      - it-tests-output-on-success
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
