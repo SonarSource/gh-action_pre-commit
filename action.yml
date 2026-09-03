@@ -8,7 +8,7 @@ inputs:
   extra-args:
     description: extra arguments passed to pre-commit run command
     required: false
-    default: "${{ github.event_name == 'pull_request' && format('--from-ref=origin/{0} --to-ref={1}', github.event.pull_request.base.ref, github.event.pull_request.head.sha) || '--all-files' }}"
+    default: "${{ github.event_name == 'pull_request' && format('--from-ref=origin/{0} --to-ref={1}', github.event.pull_request.base.ref, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('--from-ref={0} --to-ref={1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '--all-files' }}"
 
 runs:
   using: composite

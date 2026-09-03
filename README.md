@@ -1,8 +1,8 @@
 # SonarSource GitHub Action for pre-commit
 
 ![GitHub Release](https://img.shields.io/github/v/release/SonarSource/gh-action_pre-commit)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SonarSource_gh-action_pre-commit&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=SonarSource_gh-action_pre-commit)
-[![.github/workflows/it-test.yml](https://github.com/SonarSource/gh-action_pre-commit/actions/workflows/it-test.yml/badge.svg)](https://github.com/SonarSource/gh-action_pre-commit/actions/workflows/it-test.yml)
+![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SonarSource_gh-action_pre-commit&metric=alert_status)
+![.github/workflows/it-test.yml](https://github.com/SonarSource/gh-action_pre-commit/actions/workflows/it-test.yml/badge.svg)
 
 Run [pre-commit](https://pre-commit.com/) hooks at CI level.
 
@@ -14,15 +14,15 @@ nodeenv's default `https://nodejs.org/download/release/` (not blocked).
 
 v2 is a **major version**. Existing 1.x pins keep the previous behavior until callers upgrade.
 
-- **`id-token: write` is required** (Vault OIDC for Repox). `contents: read` was already required. Workflows without
-  `id-token: write` and **fork PRs** (no org Vault OIDC) will fail at credential fetch. That is expected.
-- **Branch triggers are supported.** On `push` / `workflow_dispatch` (and other non-PR events) the action
-  defaults to `--all-files`.
-- **PRs default to diff validation.** You no longer need `extra-args` with `--from-ref` / `--to-ref`;
-  that is the default on `pull_request`.
-- **`status` and `logs` outputs are removed.** Use `steps.<id>.outcome` on the action step.
-- **`ignore-failure` is removed.** Use `continue-on-error: true` on the action step if the job
-  must continue after hook failures.
+- `**id-token: write` is required** (Vault OIDC for Repox). `contents: read` was already required. Workflows without
+`id-token: write` and **fork PRs** (no org Vault OIDC) will fail at credential fetch. That is expected.
+- `**merge_group` is supported.** v2 defaults to incremental `--from-ref` / `--to-ref` on merge-queue
+events (`base_sha`…`head_sha`). Hook failures fail the job; do not ignore them on that trigger.
+- **PRs default to the same diff validation** on `pull_request`. You no longer need `extra-args`.
+- **Branch triggers are supported.** On `push` / `workflow_dispatch` (and other events) the action
+defaults to `--all-files`.
+- `**status` and `logs` outputs are removed.**
+- `ignore-failure` **input is removed.** Hook failures fail the action step.
 
 If the job has already cloned this repository (`origin` owner/repo matches), the action **skips**
 `actions/checkout`. If `--from-ref` / `--to-ref` are missing locally, it runs `git fetch origin`.
@@ -35,6 +35,8 @@ the default). Do not set `persist-credentials: false` unless the needed refs are
 Place a `.pre-commit-config.yaml` at the root of your project.
 
 On pull requests the action checks files changed in the PR. On branch events it checks all files.
+`merge_group` is also supported: the action defaults to incremental `--from-ref` / `--to-ref` on
+that trigger (`base_sha`…`head_sha`).
 
 ```yaml
 # .github/workflows/pre-commit.yml
@@ -44,9 +46,10 @@ on:
     branches:
       - master
 
+name: pre-commit
+
 jobs:
   pre-commit:
-    name: "pre-commit"
     runs-on: sonar-xs
     permissions:
       id-token: write
@@ -63,23 +66,12 @@ the repo itself. When checkout is skipped, this action still expects persisted c
 `actions/checkout` so it can fetch missing refs. Pass `extra-args` only when you need different
 pre-commit flags.
 
-To keep the job green on a specific trigger, make `continue-on-error` conditional. Here the job
-fails normally on `pull_request` / `push`, but hook failures are tolerated on `merge_group`:
-
-```yaml
-      - id: pre-commit
-        continue-on-error: ${{ github.event_name == 'merge_group' }}
-        uses: SonarSource/gh-action_pre-commit@v2
-      - if: steps.pre-commit.outcome == 'failure'
-        run: echo "pre-commit does not support running on merge_group. Ignoring errors"
-```
-
 ## Options
 
-| Option name   | Description                                                               | Default                                         |
-| ------------- | ------------------------------------------------------------------------- | ----------------------------------------------- |
-| `config-path` | Used to specify a custom path to a given `.pre-commit-config.yaml`        | `.pre-commit-config.yaml`                       |
-| `extra-args`  | Extra args for `pre-commit run`. PR: changed files; branch: `--all-files` | PR: `--from-ref`/`--to-ref`; else `--all-files` |
+| Option name   | Description                                                               | Default                                                       |
+| ------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `config-path` | Used to specify a custom path to a given `.pre-commit-config.yaml`        | `.pre-commit-config.yaml`                                     |
+| `extra-args`  | Extra args for `pre-commit run`. Diff on PR / merge queue; else all files | PR/`merge_group`: `--from-ref`/`--to-ref`; else `--all-files` |
 
 ### Required job permissions
 

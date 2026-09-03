@@ -1,5 +1,6 @@
 on:
   pull_request:
+  merge_group:
   push:
     branches: [master]
 
@@ -23,7 +24,7 @@ jobs:
         uses: ./
 
   it-tests-default-extra-args:
-    name: "IT Test - default extra-args is the PR diff on pull_request and --all-files on push"
+    name: "IT Test - default extra-args is the event diff on pull_request/merge_group and --all-files on push"
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -36,9 +37,9 @@ jobs:
         with:
           config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
       - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then PR runs skip files outside the diff (success); branch runs scan all files (failure)
+        name: Then PR and merge_group runs skip files outside the diff (success); branch runs scan all files (failure)
         with:
-          expected: ${{ github.event_name == 'pull_request' && 'success' || 'failure' }}
+          expected: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'success' || 'failure' }}
           actual: ${{ steps.test-data.outcome }}
           comparison: exact
 
