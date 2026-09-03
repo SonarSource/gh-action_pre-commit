@@ -8,7 +8,7 @@ inputs:
   extra-args:
     description: extra arguments passed to pre-commit run command
     required: false
-    default: ''
+    default: "${{ github.event_name == 'pull_request' && format('--from-ref=origin/{0} --to-ref={1}', github.event.pull_request.base.ref, github.event.pull_request.head.sha) || '--all-files' }}"
   ignore-failure:
     description: Optional, do not fail the gh-action in case of pre-commit check failure
     required: false
@@ -31,12 +31,18 @@ runs:
         EXTRA_ARGS="${{ inputs.extra-args }}"
         echo "CONFIG_PATH=$CONFIG_PATH" >> "$GITHUB_ENV"
         echo "EXTRA_ARGS=$EXTRA_ARGS"   >> "$GITHUB_ENV"
-    - name: Checkout
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-    - name: Fetch origin
-      run: git fetch origin # avoid unknown revision or path not in the working tree when
-      # using --from-ref --to-ref feature of pre-commit
+    - name: Detect existing clone
+      id: detect-clone
       shell: bash
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: bash "${{ github.action_path }}/scripts/detect-existing-clone.sh"
+    - name: Checkout
+      if: steps.detect-clone.outputs.skip_checkout != 'true'
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - name: Fetch origin if from-ref/to-ref are missing
+      shell: bash
+      run: bash "${{ github.action_path }}/scripts/ensure-from-to-refs.sh"
     - name: Fetch Repox credentials
       uses: SonarSource/vault-action-wrapper@881045d830534a70ec3c7c275fa3714412c8ff6e # 3.6.1
       id: repox-secrets
