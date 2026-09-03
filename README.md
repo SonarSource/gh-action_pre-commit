@@ -20,6 +20,9 @@ v2 is a **major version**. Existing 1.x pins keep the previous behavior until ca
   defaults to `--all-files`.
 - **PRs default to diff validation.** You no longer need `extra-args` with `--from-ref` / `--to-ref`;
   that is the default on `pull_request`.
+- **`status` and `logs` outputs are removed.** Use `steps.<id>.outcome` on the action step.
+- **`ignore-failure` is removed.** Use `continue-on-error: true` on the action step if the job
+  must continue after hook failures.
 
 If the job has already cloned this repository (`origin` owner/repo matches), the action **skips**
 `actions/checkout`. If `--from-ref` / `--to-ref` are missing locally, it runs `git fetch origin`.
@@ -60,13 +63,23 @@ the repo itself. When checkout is skipped, this action still expects persisted c
 `actions/checkout` so it can fetch missing refs. Pass `extra-args` only when you need different
 pre-commit flags.
 
+To keep the job green on a specific trigger, make `continue-on-error` conditional. Here the job
+fails normally on `pull_request` / `push`, but hook failures are tolerated on `merge_group`:
+
+```yaml
+      - id: pre-commit
+        continue-on-error: ${{ github.event_name == 'merge_group' }}
+        uses: SonarSource/gh-action_pre-commit@v2
+      - if: steps.pre-commit.outcome == 'failure'
+        run: echo "pre-commit does not support running on merge_group. Ignoring errors"
+```
+
 ## Options
 
-| Option name      | Description                                                               | Default                                         |
-| ---------------- | ------------------------------------------------------------------------- | ----------------------------------------------- |
-| `config-path`    | Used to specify a custom path to a given `.pre-commit-config.yaml`        | `.pre-commit-config.yaml`                       |
-| `extra-args`     | Extra args for `pre-commit run`. PR: changed files; branch: `--all-files` | PR: `--from-ref`/`--to-ref`; else `--all-files` |
-| `ignore-failure` | Used to not fail the gh-action in case of pre-commit check failure        | `false`                                         |
+| Option name   | Description                                                               | Default                                         |
+| ------------- | ------------------------------------------------------------------------- | ----------------------------------------------- |
+| `config-path` | Used to specify a custom path to a given `.pre-commit-config.yaml`        | `.pre-commit-config.yaml`                       |
+| `extra-args`  | Extra args for `pre-commit run`. PR: changed files; branch: `--all-files` | PR: `--from-ref`/`--to-ref`; else `--all-files` |
 
 ### Required job permissions
 

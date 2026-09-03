@@ -20,14 +20,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: SonarSource/mise-action-wrapper@v1
       - name: Given the gh-action is used with default values
-        id: test-data
         uses: ./
-      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.status value must be 0 as the project itself makes use of pre-commit validation
-        with:
-          expected: 0
-          actual: ${{ steps.test-data.outputs.status }}
-          comparison: exact
 
   it-tests-default-extra-args:
     name: "IT Test - default extra-args is the PR diff on pull_request and --all-files on push"
@@ -38,15 +31,15 @@ jobs:
           fetch-depth: 0
       - name: Given fail-check config and no extra-args
         id: test-data
+        continue-on-error: true
         uses: ./
         with:
           config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
-          ignore-failure: 'true'
       - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then PR runs skip files outside the diff (status 0); branch runs scan all files (status 1)
+        name: Then PR runs skip files outside the diff (success); branch runs scan all files (failure)
         with:
-          expected: ${{ github.event_name == 'pull_request' && '0' || '1' }}
-          actual: ${{ steps.test-data.outputs.status }}
+          expected: ${{ github.event_name == 'pull_request' && 'success' || 'failure' }}
+          actual: ${{ steps.test-data.outcome }}
           comparison: exact
 
   it-tests-skip-checkout:
@@ -135,7 +128,6 @@ jobs:
         with:
           extra-args: --from-ref=origin/${{ github.event.pull_request.base.ref || github.event.repository.default_branch }} --to-ref=${{ github.sha }}
           config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
-          ignore-failure: 'true'
       - name: Read whether origin/base exists and the marker remains
         id: after
         env:
@@ -169,68 +161,62 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: Given the gh-action is used with extra-args=--help
+      - name: Given fail-check config and extra-args=--all-files
         id: test-data
-        uses: ./
-        with:
-          extra-args: --help
-          config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
-      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.logs should contain some printed documentation
-        with:
-          expected: "usage: pre-commit run"
-          actual: ${{ steps.test-data.outputs.logs }}
-          comparison: contains
-
-  it-tests-output-on-failure:
-    name: "IT Test - outputs surface a pre-commit failure without failing the job"
-    runs-on: sonar-xs
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: Given a pre-commit-config not correctly respected
-        id: test-data
+        continue-on-error: true
         uses: ./
         with:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
-          ignore-failure: 'true'
       - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.status value must be 1
+        name: Then the action fails (on a PR the default diff would skip the fixture and succeed)
         with:
-          expected: 1
-          actual: ${{ steps.test-data.outputs.status }}
+          expected: failure
+          actual: ${{ steps.test-data.outcome }}
           comparison: exact
-      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.logs contain the failure
+      - name: And extra-args restricted to a file the failing hook ignores
+        id: scoped
+        continue-on-error: true
+        uses: ./
         with:
-          expected: "Failed"
-          actual: ${{ steps.test-data.outputs.logs }}
-          comparison: contains
+          extra-args: '--files .github/tests/resources/success-check/valid.json'
+          config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then the action succeeds (on push the default --all-files would fail)
+        with:
+          expected: success
+          actual: ${{ steps.scoped.outcome }}
+          comparison: exact
 
-  it-tests-output-on-success:
-    name: "IT Test - outputs surface a pre-commit success"
+  it-tests-fails-job-on-failure:
+    name: "IT Test - failing pre-commit fails the action step"
+    runs-on: sonar-xs
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Given a failing config
+        id: test-data
+        continue-on-error: true
+        uses: ./
+        with:
+          extra-args: '--all-files'
+          config-path: '.github/tests/resources/fail-check/.pre-commit-config.yaml'
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then the action step fails while the job continues
+        with:
+          expected: failure
+          actual: ${{ steps.test-data.outcome }}
+          comparison: exact
+
+  it-tests-succeeds-on-success:
+    name: "IT Test - a passing pre-commit config succeeds"
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Given a pre-commit-config correctly respected
-        id: test-data
         uses: ./
         with:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
-          ignore-failure: 'true'
-      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.status value must be 0
-        with:
-          expected: 0
-          actual: ${{ steps.test-data.outputs.status }}
-          comparison: exact
-      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
-        name: Then outputs.logs do not contain a failure
-        with:
-          expected: "Failed"
-          actual: ${{ steps.test-data.outputs.logs }}
-          comparison: notContains
 
   it-tests:
     name: "All IT Tests have to pass"
@@ -244,8 +230,8 @@ jobs:
       - it-tests-does-checkout
       - it-tests-fetch-missing-refs
       - it-tests-use-input-extra-args
-      - it-tests-output-on-failure
-      - it-tests-output-on-success
+      - it-tests-fails-job-on-failure
+      - it-tests-succeeds-on-success
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:

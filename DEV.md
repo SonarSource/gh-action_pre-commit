@@ -25,8 +25,8 @@ the job called `it-tests` declares a list of needs:
     ...
     needs:
        ...
-      - it-tests-output-on-failure
-      - it-tests-output-on-success
+      - it-tests-fails-job-on-failure
+      - it-tests-succeeds-on-success
       - < your new test > <-------------- Add your tests here
 ```
 
