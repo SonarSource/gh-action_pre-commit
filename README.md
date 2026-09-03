@@ -1,8 +1,8 @@
 # SonarSource GitHub Action for pre-commit
 
 ![GitHub Release](https://img.shields.io/github/v/release/SonarSource/gh-action_pre-commit)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SonarSource_gh-action_pre-commit&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=SonarSource_gh-action_pre-commit)
-[![.github/workflows/it-test.yml](https://github.com/SonarSource/gh-action_pre-commit/actions/workflows/it-test.yml/badge.svg)](https://github.com/SonarSource/gh-action_pre-commit/actions/workflows/it-test.yml)
+![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SonarSource_gh-action_pre-commit&metric=alert_status)
+![.github/workflows/it-test.yml](https://github.com/SonarSource/gh-action_pre-commit/actions/workflows/it-test.yml/badge.svg)
 
 Run [pre-commit](https://pre-commit.com/) hooks at CI level.
 
@@ -10,80 +10,68 @@ This action is for **SonarSource internal** repositories. It authenticates to Va
 Repox so hooks can install on `sonar-*` runners where those public registries are blocked. Node runtimes keep using
 nodeenv's default `https://nodejs.org/download/release/` (not blocked).
 
-## Breaking change (major version)
+## Breaking change (v2)
 
-Routing installs through Repox is a **breaking change** and will be released as a **major version**. Existing 1.x pins
-keep the previous behavior until callers upgrade.
+v2 is a **major version**. Existing 1.x pins keep the previous behavior until callers upgrade.
 
-After upgrading:
+- `**id-token: write` is required** (Vault OIDC for Repox). `contents: read` was already required. Workflows without
+`id-token: write` and **fork PRs** (no org Vault OIDC) will fail at credential fetch. That is expected.
+- `**merge_group` is supported.** v2 defaults to incremental `--from-ref` / `--to-ref` on merge-queue
+events (`base_sha`…`head_sha`). Hook failures fail the job; do not ignore them on that trigger.
+- **PRs default to the same diff validation** on `pull_request`. You no longer need `extra-args`.
+- **Branch triggers are supported.** On `push` / `workflow_dispatch` (and other events) the action
+defaults to `--all-files`.
+- `**status` and `logs` outputs are removed.**
+- `ignore-failure` **input is removed.** Hook failures fail the action step.
 
-- The calling job **must** grant `id-token: write` (Vault OIDC) and `contents: read`.
-- Workflows without that permission, **fork PRs** (no org Vault OIDC), and runners **without Repox/Vault** (typical
-  `ubuntu-latest` outside Sonar CI) will fail at credential fetch. That is expected.
+If the job has already cloned this repository (`origin` owner/repo matches), the action **skips**
+`actions/checkout`. If `--from-ref` / `--to-ref` are missing locally, it runs `git fetch origin`.
+That fetch uses credentials persisted by the caller's `actions/checkout` (`persist-credentials: true`,
+the default). Do not set `persist-credentials: false` unless the needed refs are already local
+(`fetch-depth: 0`).
 
 ## Usage
 
-### enforce pre-commit only to files changed within a pull request
-
 Place a `.pre-commit-config.yaml` at the root of your project.
 
-Create a new GitHub workflow:
+On pull requests the action checks files changed in the PR. On branch events it checks all files.
+`merge_group` is also supported: the action defaults to incremental `--from-ref` / `--to-ref` on
+that trigger (`base_sha`…`head_sha`).
 
 ```yaml
 # .github/workflows/pre-commit.yml
 on:
   pull_request:
+  push:
+    branches:
+      - master
+
+name: pre-commit
 
 jobs:
   pre-commit:
-    name: "pre-commit"
     runs-on: sonar-xs
     permissions:
       id-token: write
       contents: read
     steps:
-      - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with the last major tag
+      - uses: actions/checkout@v7
         with:
-          extra-args: >
-            --from-ref=origin/${{ github.event.pull_request.base.ref }}
-            --to-ref=${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: SonarSource/gh-action_pre-commit@v2
 ```
 
-> Notice: the extra-args parameter defined upper ensure that only files changed within the PR are checked by pre-commit.
-> If you rather like to ensure that **all files** are valid, have a look at the example below.
-
-### enforce pre-commit to all files systematically
-
-Place a `.pre-commit-config.yaml` at the root of your project.
-
-Create a new GitHub workflow:
-
-```yaml
-# .github/workflows/pre-commit.yml
-on:
-  branch:
-    - master
-
-jobs:
-  pre-commit:
-    name: "pre-commit"
-    runs-on: sonar-xs
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: SonarSource/gh-action_pre-commit@0.0.1 <--- replace with last major tag
-        with:
-          extra-args: --all-files
-```
+`fetch-depth: 0` makes `--from-ref` / `--to-ref` resolvable. If checkout is omitted, this action clones
+the repo itself. When checkout is skipped, this action still expects persisted credentials from
+`actions/checkout` so it can fetch missing refs. Pass `extra-args` only when you need different
+pre-commit flags.
 
 ## Options
 
-| Option name      | Description                                                        | Default                   |
-| ---------------- | ------------------------------------------------------------------ | ------------------------- |
-| `config-path`    | Used to specify a custom path to a given `.pre-commit-config.yaml` | `.pre-commit-config.yaml` |
-| `extra-args`     | Used to pass extra pre-commit args to the pre-commit run command   | -                         |
-| `ignore-failure` | Used to not fail the gh-action in case of pre-commit check failure | `false`                   |
+| Option name   | Description                                                               | Default                                                       |
+| ------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `config-path` | Used to specify a custom path to a given `.pre-commit-config.yaml`        | `.pre-commit-config.yaml`                                     |
+| `extra-args`  | Extra args for `pre-commit run`. Diff on PR / merge queue; else all files | PR/`merge_group`: `--from-ref`/`--to-ref`; else `--all-files` |
 
 ### Required job permissions
 

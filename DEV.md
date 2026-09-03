@@ -25,7 +25,11 @@ the job called `it-tests` declares a list of needs:
     ...
     needs:
        ...
-      - it-tests-output-logs-failure
-      - it-tests-output-logs-success
+      - it-tests-fails-job-on-failure
+      - it-tests-succeeds-on-success
       - < your new test > <-------------- Add your tests here
 ```
+
+Jobs that execute this repository's `.pre-commit-config.yaml` on `sonar-xs` must
+install shellcheck first (`uses: SonarSource/mise-action-wrapper@v1`). Fixture
+configs under `.github/tests/resources/` do not need it.

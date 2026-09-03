@@ -1,25 +1,29 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: f71fa2c1f9cf5cb705f73dffe4b21f7c61470ba9  # frozen: v4.4.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 78690b6ce14891a2ae695190a74e966217eec3c8  # frozen: 0.33.0
+    rev: c4654a7e007c9619a5eb63c39a456572a0fa1851  # frozen: 0.38.0
     hooks:
       - id: check-github-actions
         files: .*/action.ya?ml
       - id: check-github-workflows
   - repo: https://github.com/gruntwork-io/pre-commit
-    rev: 5341f388c2a962d3bc66e075f00b80ab45b15f24 # v0.1.20
+    rev: 40f924cd642f5dc98d12bd97b07f3752223553da  # frozen: v0.1.30
     hooks:
       - id: shellcheck
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: c9ea83146232fb263effdfe6f222d87f5395b27a # v0.39.0
+    rev: 5b5dddc4fb0f83c3ea1fc5616fa63e115dce83e0  # frozen: v0.49.1
     hooks:
       - id: markdownlint
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 32ee411cf36142e6082f10870ae62172ce9af133  # frozen: 35.32.0
+    rev: 15e479eeb5c807ea833e0ad90ed360c5f322cf4b  # frozen: 44.57.3
     hooks:
       - id: renovate-config-validator
+  - repo: https://github.com/rhysd/actionlint
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
+    hooks:
+      - id: actionlint

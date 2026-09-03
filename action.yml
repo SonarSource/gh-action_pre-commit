@@ -8,18 +8,7 @@ inputs:
   extra-args:
     description: extra arguments passed to pre-commit run command
     required: false
-    default: ''
-  ignore-failure:
-    description: Optional, do not fail the gh-action in case of pre-commit check failure
-    required: false
-    default: 'false'
-outputs:
-  status:
-    description: Provide the exit code returned by pre-commit run command
-    value: ${{ steps.exec-pre-commit.outputs.status }}
-  logs:
-    description: Logs from the pre-commit run command
-    value: ${{ steps.exec-pre-commit.outputs.logs }}
+    default: "${{ github.event_name == 'pull_request' && format('--from-ref=origin/{0} --to-ref={1}', github.event.pull_request.base.ref, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('--from-ref={0} --to-ref={1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '--all-files' }}"
 
 runs:
   using: composite
@@ -31,12 +20,18 @@ runs:
         EXTRA_ARGS="${{ inputs.extra-args }}"
         echo "CONFIG_PATH=$CONFIG_PATH" >> "$GITHUB_ENV"
         echo "EXTRA_ARGS=$EXTRA_ARGS"   >> "$GITHUB_ENV"
-    - name: Checkout
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-    - name: Fetch origin
-      run: git fetch origin # avoid unknown revision or path not in the working tree when
-      # using --from-ref --to-ref feature of pre-commit
+    - name: Detect existing clone
+      id: detect-clone
       shell: bash
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: bash "${{ github.action_path }}/scripts/detect-existing-clone.sh"
+    - name: Checkout
+      if: steps.detect-clone.outputs.skip_checkout != 'true'
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - name: Fetch origin if from-ref/to-ref are missing
+      shell: bash
+      run: bash "${{ github.action_path }}/scripts/ensure-from-to-refs.sh"
     - name: Fetch Repox credentials
       uses: SonarSource/vault-action-wrapper@881045d830534a70ec3c7c275fa3714412c8ff6e # 3.6.1
       id: repox-secrets
@@ -96,36 +91,11 @@ runs:
       with:
         key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles(env.CONFIG_PATH) }}
         path: ~/.cache/pre-commit
-    - id: exec-pre-commit
-      name: Execute pre-commit
+    - name: Execute pre-commit
       env:
         GIT_ASKPASS: /bin/true   # allowlisted by pre-commit's no_git_env
         GIT_CONFIG_COUNT: '1'
         GIT_CONFIG_KEY_0: "url.https://x-access-token:${{ github.token }}@github.com/.insteadof"
         GIT_CONFIG_VALUE_0: "https://github.com/"
-      run: |
-        set +e
-        OUTPUT=$(pre-commit run --config="$CONFIG_PATH" --show-diff-on-failure --color=always $EXTRA_ARGS)
-        STATUS=$?
-        echo "status=$(echo $STATUS)" >> "$GITHUB_OUTPUT"
-        # Securely expose log a random delimiter
-        DELIM="DELIM_$(openssl rand -hex 16)"
-        while echo "$OUTPUT" | grep -q "$DELIM"; do
-          DELIM="DELIM_$(openssl rand -hex 16)"
-        done
-        echo "logs<<$DELIM" >> "$GITHUB_OUTPUT"
-        echo "$OUTPUT" >> "$GITHUB_OUTPUT"
-        echo "$DELIM" >> "$GITHUB_OUTPUT"
-        exit 0
-      shell: bash
-    - name: Print execution
-      run: |
-        echo "${{ steps.exec-pre-commit.outputs.logs }}"
-        echo "Exit code: ${{ steps.exec-pre-commit.outputs.status }}"
-      shell: bash
-    - name: Check status and fail if necessary
-      if: ${{ inputs.ignore-failure == 'false' && steps.exec-pre-commit.outputs.status != 0 }}
-      run: |
-        echo "::error ::pre-commit execution detected some issues"
-        exit 1
+      run: pre-commit run --config="$CONFIG_PATH" --show-diff-on-failure --color=always $EXTRA_ARGS
       shell: bash
