@@ -26,10 +26,13 @@ the job called `it-tests` declares a list of needs:
     needs:
        ...
       - it-tests-fails-job-on-failure
-      - it-tests-succeeds-on-success
+      - it-tests-installs-pre-commit
       - < your new test > <-------------- Add your tests here
 ```
 
-Jobs that execute this repository's `.pre-commit-config.yaml` on `sonar-xs` must
-install shellcheck first (`uses: SonarSource/mise-action-wrapper@v1`). Fixture
-configs under `.github/tests/resources/` do not need it.
+Most IT jobs run `SonarSource/mise-action-wrapper@v1` after checkout. That
+pre-installs this repository's `mise.toml` tools (`pre-commit`, `python`,
+`shellcheck`) so the composite skips `setup-python` and its private CLI venv,
+and shellcheck is available for this repo's hooks.
+`it-tests-installs-pre-commit` omits the wrapper and asserts the action
+installs `pre-commit` into its private venv.
