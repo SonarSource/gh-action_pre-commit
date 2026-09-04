@@ -32,6 +32,26 @@ runs:
     - name: Fetch origin if from-ref/to-ref are missing
       shell: bash
       run: bash "${{ github.action_path }}/scripts/ensure-from-to-refs.sh"
+    - name: Detect pre-commit and python
+      id: detect-pre-commit
+      shell: bash
+      run: |
+        pre_commit_version="$(pre-commit --version 2>/dev/null | awk '{print $2}')" || true
+        python_version="$(python3 --version 2>/dev/null | awk '/^Python / {print $2}')" || true
+        if [ -n "$pre_commit_version" ]; then
+          echo "pre_commit_present=true" | tee -a "$GITHUB_OUTPUT"
+          echo "pre_commit_version=$pre_commit_version" | tee -a "$GITHUB_OUTPUT"
+        else
+          echo "pre_commit_present=false" | tee -a "$GITHUB_OUTPUT"
+          echo "pre_commit_version=4.6.2" | tee -a "$GITHUB_OUTPUT"
+        fi
+        if [ -n "$python_version" ]; then
+          echo "python_present=true" | tee -a "$GITHUB_OUTPUT"
+          echo "python_version=$python_version" | tee -a "$GITHUB_OUTPUT"
+        else
+          echo "python_present=false" | tee -a "$GITHUB_OUTPUT"
+          echo "python_version=3.14.7" | tee -a "$GITHUB_OUTPUT"
+        fi
     - name: Fetch Repox credentials
       uses: SonarSource/vault-action-wrapper@881045d830534a70ec3c7c275fa3714412c8ff6e # 3.6.1
       id: repox-secrets
@@ -45,21 +65,41 @@ runs:
         ARTIFACTORY_USERNAME: ${{ fromJSON(steps.repox-secrets.outputs.vault).ARTIFACTORY_USERNAME }}
         ARTIFACTORY_ACCESS_TOKEN: ${{ fromJSON(steps.repox-secrets.outputs.vault).ARTIFACTORY_ACCESS_TOKEN }}
       run: bash "${{ github.action_path }}/scripts/configure-repox.sh"
+    # Do not nest SonarSource/mise-action-wrapper: it caches ~/.local/share/mise
+    # and would collide with the caller's wrapper. Install python and the CLI
+    # independently when they are missing from PATH.
     - id: setup_python
+      if: steps.detect-pre-commit.outputs.python_present != 'true'
       name: Setup python
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
       with:
-        python-version: '3.14'
+        python-version: ${{ steps.detect-pre-commit.outputs.python_version }}
+    - name: Cache pre-commit CLI venv
+      uses: SonarSource/gh-action_cache@4e40632e780e11a8bbe9b721985ab22b42847cc4 # 1.7.2
+      if: steps.detect-pre-commit.outputs.pre_commit_present != 'true'
+      id: pre-commit-venv
+      with:
+        path: ${{ runner.temp }}/gh-action-pre-commit-venv
+        key: gh-action-pre-commit-venv|${{ runner.os }}-${{ runner.arch }}|${{ env.pythonLocation || steps.detect-pre-commit.outputs.python_version }}|pre-commit-${{ steps.detect-pre-commit.outputs.pre_commit_version }}
     - name: Setup pre-commit
+      if: steps.detect-pre-commit.outputs.pre_commit_present != 'true' &&
+          steps.pre-commit-venv.outputs.cache-matched-key == ''
+      env:
+        PRE_COMMIT_VERSION: ${{ steps.detect-pre-commit.outputs.pre_commit_version }}
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install --quiet pre-commit==3.7.1
+        python3 -m venv "${RUNNER_TEMP}/gh-action-pre-commit-venv"
+        "${RUNNER_TEMP}/gh-action-pre-commit-venv/bin/pip" install --quiet "pre-commit==${PRE_COMMIT_VERSION}"
       shell: bash
-    - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+    - name: Add pre-commit venv to PATH
+      if: steps.detect-pre-commit.outputs.pre_commit_present != 'true'
+      shell: bash
+      run: echo "${RUNNER_TEMP}/gh-action-pre-commit-venv/bin" >> "$GITHUB_PATH"
+    - name: Cache pre-commit hooks
+      uses: SonarSource/gh-action_cache@4e40632e780e11a8bbe9b721985ab22b42847cc4 # 1.7.2
       id: restore-cache
       with:
-        key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles(env.CONFIG_PATH) }}
         path: ~/.cache/pre-commit
+        key: pre-commit|${{ runner.os }}-${{ runner.arch }}|${{ steps.detect-pre-commit.outputs.pre_commit_version }}|${{ steps.detect-pre-commit.outputs.python_version }}|${{ hashFiles(env.CONFIG_PATH) }}
     - name: Check existence of .pre-commit-config.yaml file
       run: |
         if [ ! -f "$CONFIG_PATH" ]; then
@@ -75,7 +115,7 @@ runs:
     # that performs a network git op on `origin` will send both the extraheader
     # and URL basic credentials.
     - id: setup-pre-commit-hooks
-      if: steps.restore-cache.outputs.cache-hit != 'true'
+      if: steps.restore-cache.outputs.cache-matched-key == ''
       name: Install pre-commit dependencies
       env:
         GIT_ASKPASS: /bin/true   # allowlisted by pre-commit's no_git_env
@@ -85,12 +125,6 @@ runs:
       run: |
         pre-commit install-hooks --config="$CONFIG_PATH"
       shell: bash
-    - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      if: steps.restore-cache.outputs.cache-hit != 'true' &&
-          github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-      with:
-        key: pre-commit|${{ env.pythonLocation }}|${{ hashFiles(env.CONFIG_PATH) }}
-        path: ~/.cache/pre-commit
     - name: Execute pre-commit
       env:
         GIT_ASKPASS: /bin/true   # allowlisted by pre-commit's no_git_env

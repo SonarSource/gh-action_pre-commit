@@ -8,9 +8,11 @@ permissions:
   id-token: write
   contents: read
 
-# sonar-xs does not ship shellcheck. Any job that executes this repo's
-# .pre-commit-config.yaml must run SonarSource/mise-action-wrapper@v1 first.
-# Fixture configs under .github/tests/resources/ do not use shellcheck.
+# sonar-xs does not ship shellcheck. Jobs that need this repo's hooks or a
+# pre-installed CLI run SonarSource/mise-action-wrapper@v1 after checkout
+# (mise.toml also provides python so setup-python is skipped).
+# it-tests-installs-pre-commit omits the wrapper so the action installs
+# pre-commit itself (fixture configs do not use shellcheck).
 
 jobs:
 
@@ -30,6 +32,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+      - uses: SonarSource/mise-action-wrapper@v1
       - name: Given fail-check config and no extra-args
         id: test-data
         continue-on-error: true
@@ -48,6 +51,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: SonarSource/mise-action-wrapper@v1
       - name: Given an uncommitted change that a fresh checkout would discard
         run: echo "skip-checkout-marker" >> README.md
       - name: When the action runs against this workspace
@@ -75,6 +79,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: SonarSource/mise-action-wrapper@v1
       - name: Given an uncommitted change and an origin that is a different repository
         run: |
           echo "must-checkout-marker" >> README.md
@@ -106,6 +111,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 1
+      - uses: SonarSource/mise-action-wrapper@v1
       - name: Given origin/base is not a local ref and a marker checkout would discard
         id: before
         env:
@@ -162,6 +168,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: SonarSource/mise-action-wrapper@v1
       - name: Given fail-check config and extra-args=--all-files
         id: test-data
         continue-on-error: true
@@ -194,6 +201,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: SonarSource/mise-action-wrapper@v1
       - name: Given a failing config
         id: test-data
         continue-on-error: true
@@ -208,16 +216,33 @@ jobs:
           actual: ${{ steps.test-data.outcome }}
           comparison: exact
 
-  it-tests-succeeds-on-success:
-    name: "IT Test - a passing pre-commit config succeeds"
+  it-tests-installs-pre-commit:
+    name: "IT Test - installs pre-commit when it is not pre-installed"
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: Given a pre-commit-config correctly respected
+      - name: Given no pre-commit on PATH and a passing fixture config
         uses: ./
         with:
           extra-args: '--all-files'
           config-path: '.github/tests/resources/success-check/.pre-commit-config.yaml'
+      - name: Read the pre-commit the action left on PATH
+        id: installed
+        run: |
+          echo "pre_commit=$(command -v pre-commit)" >> "$GITHUB_OUTPUT"
+          echo "version=$(pre-commit --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then pre-commit is the action venv binary
+        with:
+          expected: ${{ runner.temp }}/gh-action-pre-commit-venv/bin/pre-commit
+          actual: ${{ steps.installed.outputs.pre_commit }}
+          comparison: exact
+      - uses: nick-fields/assert-action@0efd6166067d9c59d89c710fab4f79fb066f8985 # v4.0.1
+        name: Then the installed version is 4.6.2
+        with:
+          expected: "4.6.2"
+          actual: ${{ steps.installed.outputs.version }}
+          comparison: exact
 
   it-tests:
     name: "All IT Tests have to pass"
@@ -232,7 +257,7 @@ jobs:
       - it-tests-fetch-missing-refs
       - it-tests-use-input-extra-args
       - it-tests-fails-job-on-failure
-      - it-tests-succeeds-on-success
+      - it-tests-installs-pre-commit
     steps:
       - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
