@@ -10,27 +10,29 @@ This action is for **SonarSource internal** repositories. It authenticates to Va
 Repox so hooks can install on `sonar-*` runners where those public registries are blocked. Node runtimes keep using
 nodeenv's default `https://nodejs.org/download/release/` (not blocked).
 
-## Breaking change (v2)
+## `v2` breaking changes
 
-v2 is a **major version**. Existing 1.x pins keep the previous behavior until callers upgrade.
+### Permission changes
 
-- `**id-token: write` is required** (Vault OIDC for Repox). `contents: read` was already required. Workflows without
-`id-token: write` and **fork PRs** (no org Vault OIDC) will fail at credential fetch. That is expected.
-- `**merge_group` is supported.** v2 defaults to incremental `--from-ref` / `--to-ref` on merge-queue events
-  (`base_sha`…`head_sha`). Hook failures fail the job; do not ignore them on that trigger.
-- **PRs default to the same diff validation** on `pull_request`. You no longer need `extra-args`.
-- **Branch triggers are supported.** On `push` / `workflow_dispatch` (and other events) the action
-defaults to `--all-files`.
-- `**status` and `logs` outputs are removed.**
-- `ignore-failure` **input is removed.** Hook failures fail the action step.
-- **Bundled `pre-commit` is 4.6.2.** When the action installs the CLI itself (no `pre-commit` on `PATH`), it pins
-  `pre-commit==4.6.2` instead of `3.7.1`. Callers that run `SonarSource/mise-action-wrapper` (or otherwise pre-install
-  `pre-commit`) keep using that version. Hook caches are keyed by the CLI version and the Python interpreter in use.
+- `id-token: write` permission is now required
+- The repository must be granted Vault access to the Artifactory `private-reader` / `public-reader` token used for Repox
+authentication (the reader is chosen from the repository visibility)
 
-If the job has already cloned this repository (`origin` owner/repo matches), the action **skips** `actions/checkout`. If
-`--from-ref` / `--to-ref` are missing locally, it runs `git fetch origin`. That fetch uses credentials persisted by the
-caller's `actions/checkout` (`persist-credentials: true`, the default). Do not set `persist-credentials: false` unless
-the needed refs are already local (`fetch-depth: 0`).
+### Input and output parameter changes
+
+- `extra-args` now has event-based defaults. Drop the old PR-only `--from-ref` / `--to-ref` to use the now automatically
+supported `merge_group` and `push` triggers:
+  - on `pull_request` and `merge_group` events: incremental `--from-ref` / `--to-ref` (`base`...`head`).
+  - on `push`, `workflow_dispatch`, and other events: `--all-files`.
+- `ignore-failure` input is removed and can be safely dropped from the workflow. Hook failures now always fail the
+action step, including on `push` and `merge_group` triggers.
+- `status` and `logs` outputs are removed.
+
+### Pre-commit version update
+
+- The action installs the `pre-commit` CLI only when it is not already available in the environment. `v1` installed
+  `3.7.1`; `v2` installs `4.6.2`. If a caller already provides `pre-commit` on `PATH` (for example using
+  `SonarSource/mise-action-wrapper`), that version is used unchanged.
 
 ## Usage
 
@@ -125,11 +127,66 @@ action installed it). Listing both `pre-commit` and `python` in `mise.toml` (typ
 
 ## Versioning
 
-This project is using [Semantic Versioning](https://semver.org/).
+This project uses [Semantic Versioning](https://semver.org/). Tags and `v*` branches follow the same pattern as
+[ci-github-actions](https://github.com/SonarSource/ci-github-actions).
 
-The `master` branch shall not be referenced by end-users, please use tags instead and
-[Renovate](https://docs.renovatebot.com/) or [Dependabot](https://docs.github.com/en/code-security/dependabot) to stay
-up to date.
+The `master` branch shall not be referenced by end-users. Pin a release [tag](#tags) or a major-version
+[branch](#branches), and use [Renovate](https://docs.renovatebot.com/) or
+[Dependabot](https://docs.github.com/en/code-security/dependabot) to stay up to date.
+
+### Tags
+
+Releases are GitHub tags such as [2.0.0](https://github.com/SonarSource/gh-action_pre-commit/releases/tag/2.0.0):
+
+```yaml
+- uses: SonarSource/gh-action_pre-commit@2.0.0
+```
+
+### Branches
+
+Branches prefixed with `v` point at the latest tag of that major version, for example
+[`v2`](https://github.com/SonarSource/gh-action_pre-commit/tree/v2) and
+[`v1`](https://github.com/SonarSource/gh-action_pre-commit/tree/v1). After each release the matching `v*` branch is
+updated to the new tag.
+
+```yaml
+- uses: SonarSource/gh-action_pre-commit@v2
+```
+
+## Upgrade notes
+
+Callers typically pin the major-version branch (`@v1`, `@v2`). That branch is moved to each new tag of that major line
+after a release, so patch and minor updates are picked up without a workflow change.
+
+To pin a specific release instead, use the semver tag (`@2.0.0`).
+
+To upgrade across a major version, change the pin (`@v1` → `@v2`) and apply the
+`v2` [breaking changes](#v2-breaking-changes).
+
+## Release
+
+Follow semantic versioning when choosing the new version number:
+
+- Increase the **patch** number for **bug fixes**, **improvements**, and **documentation updates**,
+- Increase the **minor** number for **new features**,
+- Increase the **major** number for **breaking changes**.
+
+1. Create a new GitHub release on
+   [https://github.com/SonarSource/gh-action_pre-commit/releases](https://github.com/SonarSource/gh-action_pre-commit/releases).
+   Edit the generated release notes to curate the highlights and key fixes. Include any **breaking changes**.
+2. After release, the `v*` branch must be updated for pointing to the new tag.
+
+   ```shell
+    git fetch --tags
+    git update-ref -m "reset: update branch v2 to tag 2.y.z" refs/heads/v2 2.y.z
+    git push origin v2
+   ```
+
+3. Communicate the new release on the
+   [#ops-platform-releases](https://sonarsource.enterprise.slack.com/archives/C0A6RL3L9BP) Slack channel. Communicate
+   major updates, changes and migrations that require action from users following as indicated in the
+   [Updates, Changes and Migrations for Squads - Platform](https://xtranet-sonarsource.atlassian.net/wiki/spaces/Platform/pages/4385374219/Updates+Changes+and+Migrations+for+Squads+-+Platform#Usage-of-Communication-Channels)
+   xtranet page.
 
 ## Contribute
 
