@@ -6,9 +6,10 @@
 
 Run [pre-commit](https://pre-commit.com/) hooks at CI level.
 
-This action is for **SonarSource internal** repositories. It authenticates to Vault and routes pip/npm downloads through
-Repox so hooks can install on `sonar-*` runners where those public registries are blocked. Node runtimes keep using
-nodeenv's default `https://nodejs.org/download/release/` (not blocked).
+This action is for **SonarSource internal** repositories. On `sonar-*` runners, public npm, Maven, and PyPI are
+blocked. The action authenticates to Vault and routes pip and npm downloads through Repox so Python and Node hooks can
+install. Other hosts used by common hooks stay reachable and are not proxied, including `proxy.golang.org`,
+`dl.google.com` (Go toolchain), and `https://nodejs.org/download/release/` (nodeenv Node runtimes).
 
 ## `v2` breaking changes
 
@@ -41,10 +42,6 @@ Place a `.pre-commit-config.yaml` at the root of your project.
 On pull requests the action checks files changed in the PR. On branch events it checks all files. `merge_group` is also
 supported: the action defaults to incremental `--from-ref` / `--to-ref` on that trigger (`base_sha`…`head_sha`).
 
-Hook runtimes are not installed by this action. If a hook needs a language or tool on the runner (`language: system` /
-`language: script`, a specific Python for `language_version`, Go, Ruby, and so on), install it in an earlier step (for
-example `SonarSource/mise-action-wrapper`) before this action runs.
-
 ```yaml
 # .github/workflows/pre-commit.yml
 on:
@@ -55,12 +52,17 @@ on:
 
 name: pre-commit
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   pre-commit:
     runs-on: sonar-xs
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -71,6 +73,28 @@ jobs:
 `fetch-depth: 0` makes `--from-ref` / `--to-ref` resolvable. If checkout is omitted, this action clones the repo itself.
 When checkout is skipped, this action still expects persisted credentials from `actions/checkout` so it can fetch
 missing refs. Pass `extra-args` only when you need different pre-commit flags.
+
+### Hooks that require a local tool on PATH
+
+This action does not install hook runtimes. Hooks with `language: system` or `language: script` (for example
+`shellcheck`, `terraform-fmt`) look up binaries on `PATH`. The same applies when a hook pins `language_version` to an
+interpreter that is not already on the runner.
+
+`language: golang` hooks (`actionlint`, `terraform-docs`) do not need Go on `PATH`. pre-commit downloads a toolchain
+from `dl.google.com` and modules from `proxy.golang.org`, both reachable on `sonar-*` runners.
+
+Install PATH tools in an earlier step. With `SonarSource/mise-action-wrapper`, list them in `mise.toml` and run:
+
+```yaml
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/gh-action_pre-commit@v2
+```
+
+Listing `pre-commit` and `python` in `mise.toml` as well skips this action's CLI and interpreter installs. See
+[Pre-installed pre-commit](#pre-installed-pre-commit).
 
 ### Pre-installed pre-commit
 
@@ -90,14 +114,6 @@ The hook cache is keyed by the CLI version and the interpreter in use (the one a
 action installed it). Listing both `pre-commit` and `python` in `mise.toml` (typical after
 `SonarSource/mise-action-wrapper`) skips both installs.
 
-```yaml
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: SonarSource/mise-action-wrapper@v1
-      - uses: SonarSource/gh-action_pre-commit@v2
-```
-
 ## Options
 
 | Option name   | Description                                                               | Default                                                       |
@@ -114,14 +130,18 @@ action installed it). Listing both `pre-commit` and `python` in `mise.toml` (typ
 
 ### Package registries used by common hooks
 
-| Registry                                     | Used by                                                              | Covered by this action                                          |
+On `sonar-*` runners, only public npm, Maven, and PyPI are blocked. This action routes pip and npm through Repox.
+Maven is unused by typical pre-commit hook runtimes. Go and Node runtime downloads use public hosts that are still
+reachable, so they are not proxied.
+
+| Registry                                     | Used by                                                              | On `sonar-*` runners                                            |
 | -------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
-| PyPI (`pypi.org`)                            | `pre-commit-hooks`, `yamllint`, `check-jsonschema`, `sonar-secrets`  | Yes (`~/.pip/pip.conf`)                                         |
-| npm (`registry.npmjs.org`)                   | `markdownlint-cli`, `renovatebot/pre-commit-hooks`, `mirrors-eslint` | Yes (`NPM_CONFIG_REGISTRY`, global npmrc)                       |
-| Node runtime (`nodejs.org/download/release`) | `language: node` hooks via nodeenv                                   | No — `nodejs.org` is reachable; nodeenv uses its default mirror |
-| Go module proxy                              | `actionlint`, `terraform-docs` (golang hooks)                        | No — uses `proxy.golang.org`                                    |
-| RubyGems                                     | `markdownlint/markdownlint` (legacy)                                 | No                                                              |
-| Maven / Gradle                               | Not used by pre-commit hook runtimes in SonarSource                  | N/A                                                             |
+| PyPI (`pypi.org`)                            | `pre-commit-hooks`, `yamllint`, `check-jsonschema`, `sonar-secrets`  | Blocked — routed through Repox (`~/.pip/pip.conf`)              |
+| npm (`registry.npmjs.org`)                   | `markdownlint-cli`, `renovatebot/pre-commit-hooks`, `mirrors-eslint` | Blocked — routed through Repox (`NPM_CONFIG_REGISTRY`, npmrc)   |
+| Maven / Gradle                               | Not used by pre-commit hook runtimes in SonarSource                  | Blocked — not applicable                                        |
+| Node runtime (`nodejs.org/download/release`) | `language: node` hooks via nodeenv                                   | Reachable — not routed; nodeenv uses its default mirror         |
+| Go module proxy (`proxy.golang.org`)         | `actionlint`, `terraform-docs` (`language: golang`)                  | Reachable — not routed; toolchain from `dl.google.com`          |
+| RubyGems                                     | `markdownlint/markdownlint` (legacy)                                 | Reachable — this action does not configure it                   |
 
 `language: script` / `language: system` hooks (e.g. `shellcheck`, `terraform-fmt`) do not download packages.
 
