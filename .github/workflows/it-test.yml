@@ -246,7 +246,7 @@ jobs:
 
   it-tests:
     name: "All IT Tests have to pass"
-    runs-on: ubuntu-latest
+    runs-on: sonar-xs
     if: always()
     needs:
       # Add your tests here so that they prevent the merge of broken changes
