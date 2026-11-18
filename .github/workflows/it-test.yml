@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 # sonar-xs does not ship shellcheck. Jobs that need this repo's hooks or a
-# pre-installed CLI run SonarSource/mise-action-wrapper@v1 after checkout
+# pre-installed CLI run SonarSource/mise-action-wrapper@v2 after checkout
 # (mise.toml also provides python so setup-python is skipped).
 # it-tests-installs-pre-commit omits the wrapper so the action installs
 # pre-commit itself (fixture configs do not use shellcheck).
