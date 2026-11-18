@@ -89,7 +89,7 @@ Install PATH tools in an earlier step. With `SonarSource/mise-action-wrapper`, l
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/mise-action-wrapper@v2
       - uses: SonarSource/gh-action_pre-commit@v2
 ```
 
