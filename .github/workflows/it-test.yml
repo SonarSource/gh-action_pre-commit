@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 # sonar-xs does not ship shellcheck. Jobs that need this repo's hooks or a
-# pre-installed CLI run SonarSource/mise-action-wrapper@v1 after checkout
+# pre-installed CLI run SonarSource/mise-action-wrapper@v2 after checkout
 # (mise.toml also provides python so setup-python is skipped).
 # it-tests-installs-pre-commit omits the wrapper so the action installs
 # pre-commit itself (fixture configs do not use shellcheck).
@@ -21,7 +21,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/mise-action-wrapper@v2
       - name: Given the gh-action is used with default values
         uses: ./
 
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/mise-action-wrapper@v2
       - name: Given fail-check config and no extra-args
         id: test-data
         continue-on-error: true
@@ -51,7 +51,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/mise-action-wrapper@v2
       - name: Given an uncommitted change that a fresh checkout would discard
         run: echo "skip-checkout-marker" >> README.md
       - name: When the action runs against this workspace
@@ -79,7 +79,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/mise-action-wrapper@v2
       - name: Given an uncommitted change and an origin that is a different repository
         run: |
           echo "must-checkout-marker" >> README.md
@@ -111,7 +111,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 1
-      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/mise-action-wrapper@v2
       - name: Given origin/base is not a local ref and a marker checkout would discard
         id: before
         env:
@@ -168,7 +168,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/mise-action-wrapper@v2
       - name: Given fail-check config and extra-args=--all-files
         id: test-data
         continue-on-error: true
@@ -201,7 +201,7 @@ jobs:
     runs-on: sonar-xs
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: SonarSource/mise-action-wrapper@v1
+      - uses: SonarSource/mise-action-wrapper@v2
       - name: Given a failing config
         id: test-data
         continue-on-error: true
